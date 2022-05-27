@@ -3,7 +3,7 @@ env:
   shell: bash
   variables:
     TF_APPLY_ACTION: "apply"
-    CROSSACCOUNTROLEARN: "arn:aws:iam::029646955145:role/Demo_role"
+    CROSSACCOUNTROLEARN: "arn:aws:iam::11111111111:role/Demo_role"
     TERRAFORM_VERSION: 1.0.5
 phases:
   install:
