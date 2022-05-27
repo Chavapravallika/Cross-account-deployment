@@ -1,0 +1,47 @@
+version: 0.2
+env:
+  shell: bash
+  variables:
+    TF_APPLY_ACTION: "apply"
+    CROSSACCOUNTROLEARN: "arn:aws:iam::029646955145:role/Demo_role"
+    TERRAFORM_VERSION: 1.0.5
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install
+      - sudo mv /usr/local/bin/aws /root/.pyenv/shims/aws
+      - aws --version
+      - tf_version=$TERRAFORM_VERSION
+      - wget https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_amd64.zip
+      - unzip terraform_"$TERRAFORM_VERSION"_linux_amd64.zip
+      - mv terraform /usr/local/bin/
+  build:
+    commands:
+      - |
+            ASSUME_ROLE_ARN=$CROSSACCOUNTROLEARN
+            TEMP_ROLE=$(aws sts assume-role --role-arn $ASSUME_ROLE_ARN --role-session-name pravallika-test)
+            export TEMP_ROLE
+            export AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
+      - aws sts get-caller-identity
+      - aws s3api create-bucket --bucket crossaccountbucket --region us-east-1
+      - aws s3 ls --region us-east-1
+      - terraform --version
+      - ls -ll
+      - |
+        cd "$CODEBUILD_SRC_DIR/"           
+        terraform init -input=false 
+        if [[ "$TF_APPLY_ACTION" == "destroy" && "$TF_ACTION" == "plan" ]];
+        then 
+          terraform plan -destroy
+        elif [[ "$TF_APPLY_ACTION" == "apply" && "$TF_ACTION" == "plan" ]];
+        then
+          terraform plan  
+        else
+          terraform $TF_APPLY_ACTION --auto-approve
+        fi
+       
+    
